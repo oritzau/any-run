@@ -1,5 +1,5 @@
 Currently supported languages:
-Python, Javascript (NodeJS), C, C++, Java
+Python, Javascript (NodeJS), C, C++, Java, Rust
 
 How to use:
 run `cargo build --release` to compile into an executable, then 
