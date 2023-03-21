@@ -1,5 +1,8 @@
 /target
 *.py
 *.c
+*.js
+*.cpp
+*.java
 output
 
