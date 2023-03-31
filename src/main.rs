@@ -21,10 +21,12 @@ fn main() {
         }
         "c" | "cpp" => {
             requires_second_file = true;
-            Command::new("g++")
+            Command::new("gcc")
         }
         "js" => Command::new("nodejs"),
-        _ => panic!("File ending not found, see https://github.com/oritzau/any-run/blob/master/README.md for supported file types"),
+        _ => panic!("File ending not found, see 
+            https://github.com/oritzau/any-run/blob/master/README.md 
+            for supported file types"),
     };
     command.arg(file_name);
     if args.len() > 2 {
