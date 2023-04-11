@@ -10,7 +10,7 @@ fn main() {
     let file_name = args.get(1).unwrap();
     let split_file_name: Vec<&str> = args.get(1).unwrap().split('.').collect();
     let file_ending: &str = split_file_name.last().unwrap();
-    let dir = env::current_dir().unwrap("Failed to locate current directory");
+    let dir = env::current_dir().unwrap();
     let mut requires_second_file = false;
     let mut command = match file_ending {
         "py" => Command::new("python3"),
@@ -35,8 +35,8 @@ fn main() {
     // Ex: gcc -> gcc -o output 
     if requires_second_file {
         command
-            .args(["-o", "output"]) // TODO: allow for -o arg to rename secondary file
-        
+            .args(["-o", "output"]); // TODO: allow for -o arg to rename secondary file
+    } 
     // Ex: gcc -o output -> gcc -o output main.c
     command.arg(file_name);
     
