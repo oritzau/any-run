@@ -23,7 +23,7 @@ fn main() {
             requires_second_file = true;
             Command::new("gcc")
         }
-        "js" => Command::new("nodejs"),
+        "js" => Command::new("node"),
         _ => panic!("File ending not found, see 
             https://github.com/oritzau/any-run/blob/master/README.md 
             for supported file types"),
