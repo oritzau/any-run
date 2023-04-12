@@ -1,76 +1,88 @@
-use std::path::PathBuf;
+pub mod code_file {
+    use std::path::PathBuf;
+    
+    use std::env;
+    use std::process::Command;
 
-use std::env;
-use std::process::Command;
+    pub struct Codefile {
+        name: String,
+        ending: String, // Currently implemented for debugging purposes, will probably deprecate
+        dir: PathBuf,
+        command: Vec<String>,
+        compiled: bool,
+        target_name: String,
+    } 
 
-pub struct Codefile {
-    name: String,
-    ending: String, // Currently implemented for debugging purposes, will probably deprecate
-    dir: PathBuf,
-    command: Vec<String>,
-    compiled: bool,
-    target_name: Option<String>,
-}
-
-impl Codefile {
-    pub fn new(args: Vec<String>) -> Codefile {
-        if args.len() == 0 {
-            panic!("No arguments passed in");
-        }
-        let name = args.get(1).unwrap().to_owned();
-        let split_file_name: Vec<&str> = args.get(1).unwrap().split(".").collect();
-        let ending: String = split_file_name.last().unwrap().to_string();
-        let dir = env::current_dir().unwrap();
-        let (compiled, mut command) = match ending.as_str() {
-            "py" => {
-            if env::consts::OS == "windows" {
-                (false, vec![String::from("python")])
-            } else {
-                (false, vec![String::from("python3")])
-            }
-            },
-            "java" => (false, vec![String::from("java")]),
-            "rs" => (true, vec![String::from("rustc")]),
-            "c" => (true, vec![String::from("gcc")]),
-            "cpp" => (true, vec![String::from("g++")]),
-            "js" => (false, vec![String::from("node")]),
-            _ => panic!(
-                "File ending not supported, see 
-                https://github.com/oritzau/any-run/blob/master/README.md 
-                for supported file types"
-            ),
-        };
-        // Also needs to be changed
-        let target_name: Option<String> = if compiled {
-            Some("output".to_string())
-        } else {
-            None
-        };
-
-        // Brute force, need to fix later
+    pub fn get_filename_index(args: &Vec<String>) -> usize {
+        let mut index = 0;
         for arg in &args[1..] {
-            command.push(arg.to_owned())
+            match arg.as_str().chars().as_str() {
+                "-" => index += 1,
+                _ => break
+            }
         }
-        Codefile {
-            name,
-            ending,
-            dir,
-            command,
-            compiled,
-            target_name,
-        }
+        index
     }
-
-    pub fn spawn(self) {
-        let _ = Command::new(&self.command[0])
-            .args(&self.command[1..])
-            .current_dir(self.dir)
-            .status()
-            .expect("Failed to spawn command");
-        if self.compiled {
-            let _ = Command::new(self.target_name.unwrap())
+    
+    impl Codefile {
+        pub fn new(args: Vec<String>, file_name_index: usize) -> Option<Codefile> {
+            if args.len() == 0 {
+                return None;
+            }
+            let name = args.get(1)?.to_owned();
+            let split_file_name: Vec<&str> = args.get(1)?.split(".").collect();
+            let ending: String = split_file_name.last()?.to_string();
+            let dir = env::current_dir().ok()?;            
+            let (compiled, mut command) = match ending.as_str() {
+                "py" => {
+                if env::consts::OS == "windows" {
+                    (false, vec![String::from("python")])
+                } else {
+                    (false, vec![String::from("python3")])
+                }
+                },
+                "java" => (false, vec![String::from("java")]),
+                "rs" => (true, vec![String::from("rustc")]),
+                "c" => (true, vec![String::from("gcc")]),
+                "cpp" => (true, vec![String::from("g++")]),
+                "js" => (false, vec![String::from("node")]),
+                _ => panic!(
+                    "File ending not supported, see 
+                    https://github.com/oritzau/any-run/blob/master/README.md 
+                    for supported file types"
+                ),
+            };
+            
+            for arg in &args[1..file_name_index] {
+                command.push(arg.to_owned());
+            }
+            let target_name: String = if args[1].as_str() == "-o" {
+                args[2].clone()
+            } else {
+                String::new()
+            };
+                    
+            Some(Codefile {
+                name,
+                ending,
+                dir,
+                command,
+                compiled,
+                target_name,
+            })
+        }
+    
+        pub fn spawn(self) {
+            let _ = Command::new(&self.command[0])
+                .args(&self.command[1..])
+                .current_dir(self.dir)
                 .status()
-                .expect("Failed to spawn secondary command");
+                .expect("Failed to spawn command");
+            if self.compiled {
+                let _ = Command::new(self.target_name)
+                    .status()
+                    .expect("Failed to spawn secondary command");
+            }
         }
     }
 }
