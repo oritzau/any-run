@@ -2,6 +2,7 @@ use std::env;
 use std::process::Command;
 
 fn main() {
+    
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         panic!("Pass in file name, eg. 'run main.c' or 'run app.js -foo -bar'");
@@ -13,7 +14,13 @@ fn main() {
     let dir = env::current_dir().unwrap();
     let mut requires_second_file = false;
     let mut command = match file_ending {
-        "py" => Command::new("python3"),
+        "py" => {
+            if env::consts::OS == "windows" {
+                Command::new("python")
+            } else {
+                Command::new("python3")
+            }
+        },
         "java" => Command::new("java"),
         "rs" => {
             requires_second_file = true;
