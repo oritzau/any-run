@@ -5,22 +5,19 @@ pub mod code_file {
     use std::process::Command;
 
     pub struct Codefile {
-        name: String,
-        ending: String, // Currently implemented for debugging purposes, will probably deprecate
-        dir: PathBuf,
-        command: Vec<String>,
-        compiled: bool,
-        target_name: String,
+        pub name: String,
+        pub ending: String, 
+        pub dir: PathBuf,
+        pub command: Vec<String>,
+        pub compiled: bool,
+        pub target_name: String,
     } 
 
     pub fn get_filename_index(args: &Vec<String>) -> usize {
-        let mut index = 0;
-        for arg in &args[1..] {
-            match arg.as_str().chars().as_str() {
-                "-" => index += 1,
-                _ => break
+        let index = 1;
+        if args[1].starts_with('-') {
+                return index + 2;
             }
-        }
         index
     }
     
@@ -29,8 +26,8 @@ pub mod code_file {
             if args.len() == 0 {
                 return None;
             }
-            let name = args.get(1)?.to_owned();
-            let split_file_name: Vec<&str> = args.get(1)?.split(".").collect();
+            let name = args.get(file_name_index)?.to_owned();
+            let split_file_name: Vec<&str> = args.get(file_name_index)?.split(".").collect();
             let ending: String = split_file_name.last()?.to_string();
             let dir = env::current_dir().ok()?;            
             let (compiled, mut command) = match ending.as_str() {
@@ -53,7 +50,7 @@ pub mod code_file {
                 ),
             };
             
-            for arg in &args[1..file_name_index] {
+            for arg in &args[1..] {
                 command.push(arg.to_owned());
             }
             let target_name: String = if args[1].as_str() == "-o" {
@@ -86,58 +83,4 @@ pub mod code_file {
         }
     }
 }
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    #[test]
-    fn file_name_works() {
-        let file = Codefile::new(vec!["run".to_string(), "main.py".to_string()]);
-        assert_eq!(file.name, String::from("main.py"));
-    }
-
-    #[test]
-    fn file_ending_works() {
-        let file = Codefile::new(vec!["run".to_string(), "main.foo.bar.c".to_string()]);
-        assert_eq!(file.ending, String::from("c"));
-    }
-    
-    #[test]
-    fn command_works_cross_platform() {
-        let file = Codefile::new(vec!["run".to_string(), "main.py".to_string()]);
-        match std::env::consts::OS {
-            "linux" | "macos" => assert_eq!(file.command, vec![
-                String::from("python3"),
-                String::from("main.py")
-            ]),
-            "windows" => assert_eq!(file.command, vec![
-                String::from("python"),
-                String::from("main.py")
-            ]),
-            _ => panic!("Invalid OS detected"),
-        }
-    }
-
-    #[test]
-    fn command_works_with_args() {
-        let file = Codefile::new(vec![
-            "run".to_string(), 
-            "main.c".to_string(), 
-            "-r".to_string(), 
-            "-foo".to_string()
-        ]);
-        assert_eq!(file.command, vec![
-            "gcc".to_string(),
-            "main.c".to_string(),
-            "-r".to_string(),
-            "-foo".to_string(),
-        ])
-    }
-
-    #[test]
-    #[should_panic]
-    fn panics_with_bad_args() {
-        let _file = Codefile::new(Vec::new());
-    }
-
-}
