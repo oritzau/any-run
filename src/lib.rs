@@ -64,6 +64,7 @@ impl Codefile {
     pub fn spawn(self) {
         let _ = Command::new(&self.command[0])
             .args(&self.command[1..])
+            .current_dir(self.dir)
             .status()
             .expect("Failed to spawn command");
         if self.compiled {
