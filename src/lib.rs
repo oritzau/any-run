@@ -5,7 +5,7 @@ use std::process::Command;
 
 pub struct Codefile {
     name: String,
-    ending: String,
+    ending: String, // Currently implemented for debugging purposes, will probably deprecate
     dir: PathBuf,
     command: Vec<String>,
     compiled: bool,
