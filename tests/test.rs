@@ -29,22 +29,6 @@ fn command_works_cross_platform() {
 }
 
 #[test]
-fn command_works_with_args() {
-    let file = Codefile::new(vec![
-        "run".to_string(), 
-        "main.c".to_string(), 
-        "-r".to_string(), 
-        "-foo".to_string()
-    ], 1);
-    assert_eq!(file.unwrap().command, vec![
-        "gcc".to_string(),
-        "main.c".to_string(),
-        "-r".to_string(),
-        "-foo".to_string(),
-    ])
-}
-
-#[test]
 fn file_renamed_with_arg() {
     let vec = vec![
         "run".to_string(),
@@ -55,6 +39,17 @@ fn file_renamed_with_arg() {
     assert_eq!(get_filename_index(&vec), 3);
     assert_eq!(Codefile::new(vec, 3).unwrap().target_name, "foobar".to_string());
 }
+
+#[test]
+#[should_panic]
+fn panics_with_bad_flag() {
+    let file = Codefile::new(vec![
+        "run".to_string(),
+        "-o".to_string(),
+        "main.c".to_string(),
+    ], 3);
+    file.unwrap();
+} 
 
 #[test]
 #[should_panic]

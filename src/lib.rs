@@ -49,15 +49,24 @@ pub mod code_file {
                     for supported file types"
                 ),
             };
-            
-            for arg in &args[1..] {
-                command.push(arg.to_owned());
-            }
             let target_name: String = if args[1].as_str() == "-o" {
                 args[2].clone()
             } else {
-                String::new()
+                String::from("output")
             };
+            
+            for arg in &args[1..file_name_index] {
+                command.push(arg.to_owned());
+            }
+
+            if compiled && command.len() == 1 {
+                command.push("-o".to_string());
+                command.push(target_name.clone())
+            }
+
+            for arg in &args[file_name_index..] {
+                command.push(arg.to_owned())
+            }
                     
             Some(Codefile {
                 name,
@@ -75,12 +84,11 @@ pub mod code_file {
                 .current_dir(self.dir)
                 .status()
                 .expect("Failed to spawn command");
-            if self.compiled {
-                let _ = Command::new(self.target_name)
-                    .status()
-                    .expect("Failed to spawn secondary command");
+            let _ = Command::new(format!("./{}", self.target_name))
+                .status()
+                .expect("Failed to spawn secondary command");
             }
         }
     }
-}
+
 
