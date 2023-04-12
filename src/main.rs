@@ -2,7 +2,6 @@ use std::env;
 use std::process::Command;
 
 fn main() {
-    
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         panic!("Pass in file name, eg. 'run main.c' or 'run app.js -foo -bar'");

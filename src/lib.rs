@@ -7,30 +7,33 @@ pub struct Codefile {
     name: String,
     ending: String,
     dir: PathBuf,
-    command: Command,
+    command: Vec<String>,
     compiled: bool,
     target_name: Option<String>,
 }
 
 impl Codefile {
     fn new(args: Vec<String>) -> Codefile {
-        let file_name = args.get(1).unwrap();
+        if args.len() == 0 {
+            panic!("No arguments passed in");
+        }
+        let name = args.get(1).unwrap().to_owned();
         let split_file_name: Vec<&str> = args.get(1).unwrap().split(".").collect();
-        let file_ending: &str = split_file_name.last().unwrap();
+        let ending: String = split_file_name.last().unwrap().to_string();
         let dir = env::current_dir().unwrap();
-        let (compiled, command) = match file_ending {
+        let (compiled, mut command) = match ending.as_str() {
             "py" => {
             if env::consts::OS == "windows" {
-                (false, Command::new("python"))
+                (false, vec![String::from("python")])
             } else {
-                (false, Command::new("python3"))
+                (false, vec![String::from("python3")])
             }
             },
-            "java" => (false, Command::new("java")),
-            "rs" => (true, Command::new("rustc")),
-            "c" => (true, Command::new("g++")),
-            "cpp" => (true, Command::new("g++")),
-            "js" => (false, Command::new("node")),
+            "java" => (false, vec![String::from("java")]),
+            "rs" => (true, vec![String::from("rustc")]),
+            "c" => (true, vec![String::from("gcc")]),
+            "cpp" => (true, vec![String::from("g++")]),
+            "js" => (false, vec![String::from("node")]),
             _ => panic!(
                 "File ending not supported, see 
                 https://github.com/oritzau/any-run/blob/master/README.md 
@@ -43,9 +46,14 @@ impl Codefile {
         } else {
             None
         };
+
+        // Brute force, need to fix later
+        for arg in &args[1..] {
+            command.push(arg.to_owned())
+        }
         Codefile {
-            name: file_name.to_owned(),
-            ending: file_ending.to_string(),
+            name,
+            ending,
             dir,
             command,
             compiled,
@@ -68,4 +76,43 @@ mod tests {
         let file = Codefile::new(vec!["run".to_string(), "main.foo.bar.c".to_string()]);
         assert_eq!(file.ending, String::from("c"));
     }
+    
+    #[test]
+    fn command_works_cross_platform() {
+        let file = Codefile::new(vec!["run".to_string(), "main.py".to_string()]);
+        match std::env::consts::OS {
+            "linux" | "macos" => assert_eq!(file.command, vec![
+                String::from("python3"),
+                String::from("main.py")
+            ]),
+            "windows" => assert_eq!(file.command, vec![
+                String::from("python"),
+                String::from("main.py")
+            ]),
+            _ => panic!("Invalid OS detected"),
+        }
+    }
+
+    #[test]
+    fn command_works_with_args() {
+        let file = Codefile::new(vec![
+            "run".to_string(), 
+            "main.c".to_string(), 
+            "-r".to_string(), 
+            "-foo".to_string()
+        ]);
+        assert_eq!(file.command, vec![
+            "gcc".to_string(),
+            "main.c".to_string(),
+            "-r".to_string(),
+            "-foo".to_string(),
+        ])
+    }
+
+    #[test]
+    #[should_panic]
+    fn panics_with_bad_args() {
+        let _file = Codefile::new(Vec::new());
+    }
+
 }
