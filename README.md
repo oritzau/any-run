@@ -9,6 +9,6 @@ On Linux I recommend moving run to `~/usr/bin`, so it can be used as a global co
 
 Ex: `run main.py`, `run hello_world.cpp`, `run Calculator.java -e foo`
 
-C, C++ and Rust files will default to "output" but can be altered with the `-o` flag, i.e. `run -o hello hello_world.c` will
+Compiled C, C++ and Rust executables will default to "output" but can be altered with the `-o` flag, i.e. `run -o hello hello_world.c` will
 resolve to `gcc -o hello hello_world.c`.
 
