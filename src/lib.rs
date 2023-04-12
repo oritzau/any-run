@@ -18,7 +18,7 @@ impl Codefile {
         let split_file_name: Vec<&str> = args.get(1).unwrap().split(".").collect();
         let file_ending: &str = split_file_name.last().unwrap();
         let dir = env::current_dir().unwrap();
-        let (is_compiled, command) = match file_ending {
+        let (compiled, command) = match file_ending {
             "py" => {
             if env::consts::OS == "windows" {
                 (false, Command::new("python"))
@@ -38,7 +38,7 @@ impl Codefile {
             ),
         };
 
-        let target_name: Option<String> = if is_compiled {
+        let target_name: Option<String> = if compiled {
             Some("output".to_string())
         } else {
             None
@@ -46,10 +46,10 @@ impl Codefile {
         Codefile {
             name: file_name.to_owned(),
             ending: file_ending.to_string(),
-            dir: dir,
-            command: command,
-            compiled: is_compiled,
-            target_name: target_name,
+            dir,
+            command,
+            compiled,
+            target_name,
         }
     }
 }
@@ -58,8 +58,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn py_works_windows() {
+    fn file_name_works() {
         let file = Codefile::new(vec!["run".to_string(), "main.py".to_string()]);
         assert_eq!(file.name, String::from("main.py"));
+    }
+
+    #[test]
+    fn file_ending_works() {
+        let file = Codefile::new(vec!["run".to_string(), "main.foo.bar.c".to_string()]);
+        assert_eq!(file.ending, String::from("c"));
     }
 }
