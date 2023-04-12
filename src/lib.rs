@@ -13,7 +13,7 @@ pub struct Codefile {
 }
 
 impl Codefile {
-    fn new(args: Vec<String>) -> Codefile {
+    pub fn new(args: Vec<String>) -> Codefile {
         if args.len() == 0 {
             panic!("No arguments passed in");
         }
@@ -40,7 +40,7 @@ impl Codefile {
                 for supported file types"
             ),
         };
-
+        // Also needs to be changed
         let target_name: Option<String> = if compiled {
             Some("output".to_string())
         } else {
@@ -58,6 +58,18 @@ impl Codefile {
             command,
             compiled,
             target_name,
+        }
+    }
+
+    pub fn spawn(self) {
+        let _ = Command::new(&self.command[0])
+            .args(&self.command[1..])
+            .status()
+            .expect("Failed to spawn command");
+        if self.compiled {
+            let _ = Command::new(self.target_name.unwrap())
+                .status()
+                .expect("Failed to spawn secondary command");
         }
     }
 }
