@@ -20,6 +20,12 @@ pub mod code_file {
             }
         index
     }
+
+    pub fn get_file_ending(file_name: String) -> Option<String> {
+        let split_file_name: Vec<&str> = file_name.split(".").collect();
+        let ending = split_file_name.last()?;
+        Some(ending.to_string())
+    }
     
     impl Codefile {
         pub fn new(args: Vec<String>, file_name_index: usize) -> Option<Codefile> {
@@ -84,9 +90,11 @@ pub mod code_file {
                 .current_dir(self.dir)
                 .status()
                 .expect("Failed to spawn command");
-            let _ = Command::new(format!("./{}", self.target_name))
-                .status()
-                .expect("Failed to spawn secondary command");
+            if self.compiled {
+                let _ = Command::new(format!("./{}", self.target_name))
+                    .status()
+                    .expect("Failed to spawn secondary command");
+            }
             }
         }
     }
