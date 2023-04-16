@@ -9,7 +9,7 @@ fn main() {
     let index = get_filename_index(&args);
     let file = Codefile::new(&args, index);
     if let Some(f) = file {
-        f.spawn()
+        f.execute()
     } else {
         println!("Something went wrong");
     }
