@@ -3,7 +3,8 @@ pub mod code_file {
 
     use std::env;
     use std::process::Command;
-
+    
+    #[derive(Debug)]
     pub struct Codefile<'a> {
         pub name: &'a str,
         pub ending: &'a str,
@@ -94,6 +95,7 @@ pub mod code_file {
         }
     }
     mod tests {
+        #[cfg(test)]
         use super::*;
         #[test]
         fn file_name_works() {
@@ -147,6 +149,13 @@ pub mod code_file {
             let vec = vec!["run".to_string(), "-o".to_string(), "main.c".to_string()];
             let file = Codefile::new(&vec, 3);
             file.unwrap();
+        }
+
+        #[test]
+        fn returns_none_with_bad_flag() {
+            let vec = vec!["run".to_string(), "-o".to_string(), "main.c".to_string()];
+            let file = Codefile::new(&vec, 3);
+            assert!(file.is_none());
         }
         
         #[test]
