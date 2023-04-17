@@ -1,10 +1,8 @@
 pub mod code_file {
-    use std::path::PathBuf;
-
     use std::env;
+    use std::path::PathBuf;
     use std::process::Command;
-    
-    #[derive(Debug)]
+
     pub struct Codefile<'a> {
         pub name: &'a str,
         pub ending: &'a str,
@@ -33,9 +31,17 @@ pub mod code_file {
             if args.len() == 0 {
                 return None;
             }
+
+            // File name
             let name = args.get(file_name_index)?;
+
+            // File ending, Ex: "js" "c" "py"
             let ending = get_file_ending(&name)?;
+
+            // Directory of target file
             let dir = env::current_dir().ok()?;
+
+            // (Flag for whether or not code is compiled, full command as Vec<&str>) Ex: (true, ["python3", "main.py"])
             let (compiled, mut command) = match ending {
                 "py" => {
                     if env::consts::OS == "windows" {
@@ -55,17 +61,18 @@ pub mod code_file {
                     for supported file types"
                 ),
             };
+
+            // Desired name of target file
             let target_name: &str = if args[1] == "-o" { &args[2] } else { "output" };
 
+            // Adding additional flags (if any are present) to command
             for arg in &args[1..file_name_index] {
                 command.push(&arg);
             }
-
             if compiled && command.len() == 1 {
                 command.push("-o");
                 command.push(target_name)
             }
-
             for arg in &args[file_name_index..] {
                 command.push(&arg)
             }
@@ -103,15 +110,16 @@ pub mod code_file {
             let file = Codefile::new(&vec, 1);
             assert_eq!(file.unwrap().name, String::from("main.py"));
         }
-        
+
         #[test]
         fn file_ending_works() {
             let vec = vec!["run".to_string(), "main.foo.bar.c".to_string()];
             let file = Codefile::new(&vec, 1);
             assert_eq!(file.unwrap().ending, String::from("c"));
         }
-        
+
         #[test]
+        // Todo: needs to be run on Windows and Mac 
         fn command_works_cross_platform() {
             let vec = vec!["run".to_string(), "main.py".to_string()];
             let file = Codefile::new(&vec, 1);
@@ -127,7 +135,7 @@ pub mod code_file {
                 _ => panic!("Invalid OS detected"),
             }
         }
-        
+
         #[test]
         fn file_renamed_with_arg() {
             let vec = vec![
@@ -136,13 +144,23 @@ pub mod code_file {
                 "foobar".to_string(),
                 "main.c".to_string(),
             ];
-            assert_eq!(get_filename_index(&vec), 3);
             assert_eq!(
                 Codefile::new(&vec, 3).unwrap().target_name,
                 "foobar".to_string()
             );
         }
         
+        #[test]
+        fn get_file_ending_works() {
+            let vec = vec![
+                "run".to_string(),
+                "-o".to_string(),
+                "foobar".to_string(),
+                "main.c".to_string(),
+            ];
+            assert_eq!(get_filename_index(&vec), 3);
+        }
+
         #[test]
         #[should_panic]
         fn panics_with_bad_flag() {
@@ -157,19 +175,21 @@ pub mod code_file {
             let file = Codefile::new(&vec, 3);
             assert!(file.is_none());
         }
-        
+
         #[test]
         #[should_panic]
         fn panics_with_bad_args() {
             let _file = Codefile::new(&Vec::new(), 0).unwrap();
         }
-        
+
         #[test]
         #[should_panic]
         fn panics_with_bad_filetype() {
-            let vec: Vec<String> = vec!["run", "my_file.txt"].iter().map(|s|s.to_string()).collect();
+            let vec: Vec<String> = vec!["run", "my_file.txt"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
             let _ = Codefile::new(&vec, get_filename_index(&vec));
         }
     }
 }
-
