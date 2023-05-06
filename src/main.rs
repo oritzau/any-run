@@ -5,9 +5,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     // Crate should not be run without args, "cargo run" has no meaning
-    if args.len() < 2 {
-        panic!("Pass in file name, eg. 'run main.c' or 'run app.js -foo -bar'");
-    }
+    
     let index = get_filename_index(&args); // Index of filename inside vector of args
 
     // If creation fails, Codefile::new() returns none and the program ends with no side effects
