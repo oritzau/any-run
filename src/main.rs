@@ -10,7 +10,7 @@ fn main() {
     let index = get_filename_index(&args); // Index of filename inside vector of args
 
     // If creation fails, Codefile::new() returns Option::None and the program ends with no side effects
-    let file: Option<Codefile> = Codefile::new(&args, index);
+    let file: Option<Codefile> = Codefile::try_new(&args, index);
     if let Some(f) = file {
         if f.execute().is_err() {
             println!("Your codefile was successfully created, but ran into an issue executing");

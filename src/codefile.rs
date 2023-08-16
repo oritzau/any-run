@@ -27,7 +27,7 @@ pub fn get_file_ending(file_name: &str) -> Option<&str> {
 }
 
 impl<'a> Codefile<'a> {
-    pub fn new(args: &'a [String], file_name_index: usize) -> Option<Codefile<'a>> {
+    pub fn try_new(args: &'a [String], file_name_index: usize) -> Option<Codefile<'a>> {
         if args.len() == 1 {
             return None;
         }
@@ -41,6 +41,9 @@ impl<'a> Codefile<'a> {
         // Directory of target file
         let dir = env::current_dir().ok()?;
 
+        // Desired name of target file
+        let target_name: &str = if args[1] == "-o" { &args[2] } else { "output" };
+
         // (Flag for whether or not code is compiled, full command as Vec<&str>) Ex: (true, ["python3", "main.py"])
         let (compiled, mut command) = match ending {
             "py" => {
@@ -50,7 +53,10 @@ impl<'a> Codefile<'a> {
                     (false, vec![("python3")])
                 }
             }
-            "java" => (false, vec!["java"]),
+            "java" => {
+                
+                (true, vec!["javac"])
+            },
             "rs" => (true, vec!["rustc"]),
             "c" => (true, vec!["gcc"]),
             "cpp" => (true, vec!["g++"]),
@@ -62,8 +68,6 @@ impl<'a> Codefile<'a> {
             ),
         };
 
-        // Desired name of target file
-        let target_name: &str = if args[1] == "-o" { &args[2] } else { "output" };
 
         // Adding additional flags (if any are present) to command
         for arg in &args[1..file_name_index] {
@@ -92,10 +96,19 @@ impl<'a> Codefile<'a> {
             .args(&self.command[1..])
             .current_dir(&self.dir)
             .status()?;
-        if self.compiled {
-            let _ = Command::new(format!("./{}", self.target_name))
+        match self.compiled {
+            true if self.ending == "java" => {
+                let _ = Command::new(String::from("java"))
+                    .arg("Main")
+                    .current_dir(&self.dir)
+                    .status()?;
+            }
+            true => {
+                let _ = Command::new(format!("./{}", self.target_name))
                 .current_dir(&self.dir)
                 .status()?;
+            },
+            false => (),
         }
         Ok(())
     }
@@ -107,21 +120,21 @@ mod tests {
     #[test]
     fn file_name_works() {
         let vec = vec!["run".to_string(), "main.py".to_string()];
-        let file = Codefile::new(&vec, 1);
+        let file = Codefile::try_new(&vec, 1);
         assert_eq!(file.unwrap().name, String::from("main.py"));
     }
 
     #[test]
     fn file_ending_works() {
         let vec = vec!["run".to_string(), "main.foo.bar.c".to_string()];
-        let file = Codefile::new(&vec, 1);
+        let file = Codefile::try_new(&vec, 1);
         assert_eq!(file.unwrap().ending, String::from("c"));
     }
 
     #[test]
     fn command_works_cross_platform() {
         let vec = vec!["run".to_string(), "main.py".to_string()];
-        let file = Codefile::new(&vec, 1);
+        let file = Codefile::try_new(&vec, 1);
         match std::env::consts::OS {
             "linux" | "macos" => assert_eq!(
                 file.unwrap().command,
@@ -144,7 +157,7 @@ mod tests {
             "main.c".to_string(),
         ];
         assert_eq!(
-            Codefile::new(&vec, 3).unwrap().target_name,
+            Codefile::try_new(&vec, 3).unwrap().target_name,
             "foobar".to_string()
         );
     }
@@ -164,21 +177,21 @@ mod tests {
     #[should_panic]
     fn panics_with_bad_flag() {
         let vec = vec!["run".to_string(), "-o".to_string(), "main.c".to_string()];
-        let file = Codefile::new(&vec, 3);
+        let file = Codefile::try_new(&vec, 3);
         file.unwrap();
     }
 
     #[test]
     fn returns_none_with_bad_flag() {
         let vec = vec!["run".to_string(), "-o".to_string(), "main.c".to_string()];
-        let file = Codefile::new(&vec, 3);
+        let file = Codefile::try_new(&vec, 3);
         assert!(file.is_none());
     }
 
     #[test]
     #[should_panic]
     fn panics_with_bad_args() {
-        let _file = Codefile::new(&Vec::new(), 0).unwrap();
+        let _file = Codefile::try_new(&Vec::new(), 0).unwrap();
     }
 
     #[test]
@@ -188,7 +201,7 @@ mod tests {
             .iter()
             .map(|s| s.to_string())
             .collect();
-        let _ = Codefile::new(&vec, get_filename_index(&vec));
+        let _ = Codefile::try_new(&vec, get_filename_index(&vec));
     }
 }
 
