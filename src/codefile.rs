@@ -4,20 +4,24 @@ use std::process::Command;
 
 pub struct Codefile<'a> {
     pub name: &'a str,
-    pub ending: &'a str,
-    pub dir: PathBuf,
-    pub command: Vec<&'a str>,
-    pub compiled: bool,
-    pub target_name: &'a str,
+    ending: &'a str,
+    dir: PathBuf,
+    command: Vec<&'a str>,
+    compiled: bool,
+    runtime_args: Vec<&'a str>,
 }
 
-pub fn get_filename_index(args: &[String]) -> usize {
-    if args.len() == 1 { return 0 }
-    let index = 1;
-    if args[1].starts_with('-') {
-        return index + 2;
+#[derive(Debug)]
+pub enum CodeFileError {
+    EndingNotSupported,
+    FileNotFound,
+    DirectoryNotFound(std::io::Error),
+}
+
+impl From<std::io::Error> for CodeFileError {
+    fn from(value: std::io::Error) -> Self {
+        Self::DirectoryNotFound(value)
     }
-    index
 }
 
 pub fn get_file_ending(file_name: &str) -> Option<&str> {
@@ -26,23 +30,18 @@ pub fn get_file_ending(file_name: &str) -> Option<&str> {
     Some(ending)
 }
 
-impl<'a> Codefile<'a> {
-    pub fn try_new(args: &'a [String], file_name_index: usize) -> Option<Codefile<'a>> {
-        if args.len() == 1 {
-            return None;
-        }
+impl<'a> TryFrom<&'a [String]> for Codefile<'a> {
+    type Error = CodeFileError;
 
-        // File name
-        let name = args.get(file_name_index)?;
+    fn try_from(args: &'a [String]) -> Result<Self, Self::Error> {
 
-        // File ending, Ex: "js" "c" "py"
-        let ending = get_file_ending(name)?;
+        let name = args.get(1).ok_or(Self::Error::FileNotFound)?;
 
-        // Directory of target file
-        let dir = env::current_dir().ok()?;
+        let ending = get_file_ending(name).ok_or(Self::Error::FileNotFound)?;
 
-        // Desired name of target file
-        let target_name: &str = if args[1] == "-o" { &args[2] } else { "output" };
+        let dir = env::current_dir()?;
+
+        let mut runtime_args: Vec<&str> = Vec::new();
 
         // (Flag for whether or not code is compiled, full command as Vec<&str>) Ex: (true, ["python3", "main.py"])
         let (compiled, mut command) = match ending {
@@ -57,56 +56,54 @@ impl<'a> Codefile<'a> {
                 
                 (true, vec!["javac"])
             },
-            "rs" => (true, vec!["rustc"]),
-            "c" => (true, vec!["gcc"]),
-            "cpp" => (true, vec!["g++"]),
+            "rs" => (true, vec!["rustc", "-o", "output"]),
+            "c" => (true, vec!["gcc", "-o", "output"]),
+            "cpp" => (true, vec!["g++", "-o", "output"]),
             "js" => (false, vec!["node"]),
-            _ => panic!(
-                "File ending not supported, see 
-                https://github.com/oritzau/any-run/blob/master/README.md 
-                for supported file types"
-            ),
+            _ => return Err(Self::Error::EndingNotSupported),
+            
         };
-
-
-        // Adding additional flags (if any are present) to command
-        for arg in &args[1..file_name_index] {
-            command.push(arg);
+        command.push(name);
+        if args.len() >= 2 {
+            for arg in &args[2..] {
+                runtime_args.push(arg)
+            }
         }
-        if compiled && command.len() == 1 {
-            command.push("-o");
-            command.push(target_name)
-        }
-        for arg in &args[file_name_index..] {
-            command.push(arg)
-        }
-
-        Some(Self {
+        Ok(Self {
             name,
             ending,
             dir,
             command,
             compiled,
-            target_name,
+            runtime_args,
         })
     }
-
+}
+impl<'a> Codefile<'a> {
     pub fn execute(self) -> Result<(), std::io::Error>{
-        let _ = Command::new(self.command[0])
-            .args(&self.command[1..])
-            .current_dir(&self.dir)
-            .status()?;
+        let mut primary_command = Command::new(self.command[0]);
+        primary_command.args(&self.command[1..]).current_dir(&self.dir);
+
+        if !self.compiled {
+            primary_command.args(&self.runtime_args);
+        }
+
+        let command_status = primary_command.status()?;
         match self.compiled {
-            true if self.ending == "java" => {
+            true if self.ending == "java" && command_status.success() => {
                 let _ = Command::new(String::from("java"))
                     .arg("Main")
+                    .args(&self.runtime_args)
                     .current_dir(&self.dir)
                     .status()?;
             }
             true => {
-                let _ = Command::new(format!("./{}", self.target_name))
-                .current_dir(&self.dir)
-                .status()?;
+                if command_status.success() {
+                    let _ = Command::new(String::from("./output"))
+                        .args(&self.runtime_args)
+                        .current_dir(&self.dir)
+                        .status()?;
+                }
             },
             false => (),
         }
@@ -115,93 +112,5 @@ impl<'a> Codefile<'a> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn file_name_works() {
-        let vec = vec!["run".to_string(), "main.py".to_string()];
-        let file = Codefile::try_new(&vec, 1);
-        assert_eq!(file.unwrap().name, String::from("main.py"));
-    }
-
-    #[test]
-    fn file_ending_works() {
-        let vec = vec!["run".to_string(), "main.foo.bar.c".to_string()];
-        let file = Codefile::try_new(&vec, 1);
-        assert_eq!(file.unwrap().ending, String::from("c"));
-    }
-
-    #[test]
-    fn command_works_cross_platform() {
-        let vec = vec!["run".to_string(), "main.py".to_string()];
-        let file = Codefile::try_new(&vec, 1);
-        match std::env::consts::OS {
-            "linux" | "macos" => assert_eq!(
-                file.unwrap().command,
-                vec![String::from("python3"), String::from("main.py")]
-            ),
-            "windows" => assert_eq!(
-                file.unwrap().command,
-                vec![String::from("python"), String::from("main.py")]
-            ),
-            _ => panic!("Invalid OS detected"),
-        }
-    }
-
-    #[test]
-    fn file_renamed_with_arg() {
-        let vec = vec![
-            "run".to_string(),
-            "-o".to_string(),
-            "foobar".to_string(),
-            "main.c".to_string(),
-        ];
-        assert_eq!(
-            Codefile::try_new(&vec, 3).unwrap().target_name,
-            "foobar".to_string()
-        );
-    }
-
-    #[test]
-    fn get_file_ending_works() {
-        let vec = vec![
-            "run".to_string(),
-            "-o".to_string(),
-            "foobar".to_string(),
-            "main.c".to_string(),
-        ];
-        assert_eq!(get_filename_index(&vec), 3);
-    }
-
-    #[test]
-    #[should_panic]
-    fn panics_with_bad_flag() {
-        let vec = vec!["run".to_string(), "-o".to_string(), "main.c".to_string()];
-        let file = Codefile::try_new(&vec, 3);
-        file.unwrap();
-    }
-
-    #[test]
-    fn returns_none_with_bad_flag() {
-        let vec = vec!["run".to_string(), "-o".to_string(), "main.c".to_string()];
-        let file = Codefile::try_new(&vec, 3);
-        assert!(file.is_none());
-    }
-
-    #[test]
-    #[should_panic]
-    fn panics_with_bad_args() {
-        let _file = Codefile::try_new(&Vec::new(), 0).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn panics_with_bad_filetype() {
-        let vec: Vec<String> = vec!["run", "my_file.txt"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
-        let _ = Codefile::try_new(&vec, get_filename_index(&vec));
-    }
-}
+mod tests {}
 

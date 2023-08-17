@@ -1,22 +1,22 @@
-use run::codefile::{Codefile, get_filename_index};
+use run::codefile::{Codefile, CodeFileError};
 use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
     assert_ne!(args.len(), 1);
-    // Crate should not be run without args, "cargo run" has no meaning
-    
-    let index = get_filename_index(&args); // Index of filename inside vector of args
 
-    // If creation fails, Codefile::new() returns Option::None and the program ends with no side effects
-    let file: Option<Codefile> = Codefile::try_new(&args, index);
-    if let Some(f) = file {
-        if f.execute().is_err() {
-            println!("Your codefile was successfully created, but ran into an issue executing");
+    let file = Codefile::try_from(&args[..]);
+
+    match file {
+        Ok(f) => {
+            let file_name: String = String::from(f.name);
+            if let Err(_) = f.execute() {
+                println!("Codefile `{}` failed to run", file_name);
+            }
         }
-    } else {
-        // Todo: give more helpful errors
-        println!("Your codefile was not successfully created");
+        Err(CodeFileError::FileNotFound) => println!("poly-run: Couldn't find file"),
+        Err(CodeFileError::EndingNotSupported) => println!("poly-run: File ending not supported. See https://github.com/oritzau/poly-run/blob/master/README.md for supported filetypes"),
+        Err(CodeFileError::DirectoryNotFound(_)) => println!("poly-run: Could not find directory information"),
     }
 }
